@@ -1,0 +1,2 @@
+# flagg
+CLI flag generator
