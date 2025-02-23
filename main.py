@@ -89,7 +89,7 @@ def generate_flag(theme):
     return flag_mapped
 
 # Flag display
-def display_flag(flag):
+def display_flag(flag, animation):
     output = Text()
     for row in flag:
         output_row = Text()
@@ -99,20 +99,108 @@ def display_flag(flag):
 
 
         output.append(output_row)
-        output.append("\n")  # New line after each row
+        if animation:
+            output.append("\n")  # New line after each row
+        else:
+            console.print(output_row)
         # Print the row after joining the parts
         # console.print(output_row)
     
-    return output
+    if animation:
+        return output
 
+# Save Flag 
+def save_flag(flag, name):
+    """Saves the flag design to a JSON file"""
+    try:
+        with open("saves.json", "r") as f:
+            saved_flags = json.load(f)
+    except FileNotFoundError:
+        saved_flags = {}
+
+    # Generate a timestamp as the flag ID
+    #flag_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    # Save the flag
+    saved_flags[name] = {
+        "flag": flag.tolist()
+    }
+    
+    with open("saves.json", "w") as f:
+        json.dump(saved_flags, f, indent=4, separators=(",", ":"))
+
+    console.print(f"✅[green]Flag saved as {name}[/green]")
+ 
+# Load Flags
+def load_flag(name):
+    """Loads a flag from the JSON file and returns it as a NumPy array"""
+    filename = "saves.json"
+
+    try:
+        with open(filename, "r") as f:
+            saved_flags = json.load(f)
+        
+        if name in saved_flags:
+            flag_list = saved_flags[name]["flag"]
+            return np.array(flag_list)  # Convert list back to NumPy array
+        else:
+            console.print(f"⚠️ Flag '{name}' not found.")
+            return np.zeros((height, width), dtype=int)
+
+
+    except (FileNotFoundError, json.JSONDecodeError):
+        console.print("⚠️ No saved flags found or JSON is corrupted.")
+        return np.zeros((height, width), dtype=int)
+
+# List saves
+def list_saved_flags():
+    """Lists all the saved flag names from the JSON file"""
+    try:
+        with open("saves.json", "r") as f:
+            saved_flags = json.load(f)
+            # Print the flag names (keys)
+            flag_names = list(saved_flags.keys())
+            if flag_names:
+                console.print("Saved Flags:")
+                for name in flag_names:
+                    console.print(f"- {name}")
+            else:
+                console.print("No flags saved yet.")
+    except FileNotFoundError:
+        console.print("No saved flags found.")
 
 @app.command()
-def main(theme = "neutral"):
-    with Live("Generating flag...", refresh_per_second=60) as live:
-        for frame in range(100):
-            flag = generate_flag(theme)
-            live.update(display_flag(flag))
-            time.sleep(0.01)
+def main(theme = "neutral", animation:bool = False, load:bool = False, list:bool = False):
+    
+    # Load, animation or normal + saving op 
+    if list:
+        list_saved_flags()
+    elif load:
+        name = typer.prompt("Enter Name:").strip().lower()
+        flag = load_flag(name)
+        display_flag(flag, animation)
+    elif animation:
+        with Live("Generating flag...", refresh_per_second=60) as live:
+            for frame in range(100):
+                flag = generate_flag(theme)
+                live.update(display_flag(flag, animation))
+                time.sleep(0.01)
+        save_choice = typer.prompt("Do you want to save this flag? (yes/no)").strip().lower()
+        if save_choice in ["yes", "y"]:
+            name = typer.prompt("Enter Name:").strip().lower()
+            save_flag(flag, name)
+
+
+    else:
+        flag = generate_flag(theme)
+        display_flag(flag, animation)
+        # Flag saving
+        save_choice = typer.prompt("Do you want to save this flag? (yes/no)").strip().lower()
+        if save_choice in ["yes", "y"]:
+            name = typer.prompt("Enter Name:").strip().lower()
+            save_flag(flag, name)
+
+
 
 
 
